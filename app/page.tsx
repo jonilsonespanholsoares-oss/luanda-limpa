@@ -67,7 +67,7 @@ export default function Home() {
 
       {/* FOOTER */}
       <footer className="text-center py-6 text-green-600 text-sm border-t border-green-900">
-        © 2025 Luanda Limpa · Desenvolvido para a cidade de Luanda
+        © 2026 Luanda Limpa · Desenvolvido para a cidade de Luanda
       </footer>
 
     </main>
