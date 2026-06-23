@@ -1,4 +1,5 @@
 'use client'
+import JFSFlutuante from '../../components/JFSFlutuante'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import dynamic from 'next/dynamic'
@@ -170,6 +171,7 @@ export default function Mapa() {
 
         </div>
       </div>
+      <JFSFlutuante pagina="mapa" />
     </main>
   )
 }

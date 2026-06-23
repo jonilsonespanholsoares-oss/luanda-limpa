@@ -1,4 +1,5 @@
 'use client'
+import JFSFlutuante from '../../components/JFSFlutuante'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 
@@ -120,6 +121,7 @@ export default function Dashboard() {
         </div>
 
       </div>
+      <JFSFlutuante pagina="dashboard" nomeUtilizador={utilizador?.nome} papel={utilizador?.papel} />
     </main>
   )
 }

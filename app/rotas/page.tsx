@@ -1,4 +1,5 @@
 'use client'
+import JFSFlutuante from '../../components/JFSFlutuante'
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { enviarNotificacao } from '../../lib/email'
@@ -217,6 +218,7 @@ export default function Rotas() {
           </div>
         </div>
       </div>
+      <JFSFlutuante pagina="rotas" nomeUtilizador={utilizador?.nome} papel={utilizador?.papel} />
     </main>
   )
 }
