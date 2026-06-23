@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { enviarNotificacao } from '../../lib/email'
 
 export default function Rotas() {
   const [municipioSeleccionado, setMunicipioSeleccionado] = useState('')
@@ -75,6 +76,24 @@ export default function Rotas() {
 
     carregarRotas()
     setCarregando(false)
+    try {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    const { data: perfil } = await supabase
+      .from('perfis').select('*').eq('id', user.id).single()
+    if (perfil?.email) {
+      await enviarNotificacao({
+        nome: perfil.nome,
+        emailDestino: perfil.email,
+        assunto: `Nova rota optimizada — ${municipioSeleccionado}`,
+        mensagem: `O JFS optimizou uma nova rota para o município de ${municipioSeleccionado}.\n\n${rotaIA}`,
+        municipio: municipioSeleccionado
+      })
+    }
+  }
+} catch (e) {
+  console.log('Erro ao enviar email:', e)
+}
   }
 
   return (
