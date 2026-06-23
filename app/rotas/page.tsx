@@ -9,6 +9,7 @@ export default function Rotas() {
   const [rotaIA, setRotaIA] = useState('')
   const [carregando, setCarregando] = useState(false)
   const [rotas, setRotas] = useState<any[]>([])
+  const [utilizador, setUtilizador] = useState<any>(null)
 
   const municipios = [
     'Belas', 'Cacuaco', 'Cazenga', 'Icolo e Bengo',
@@ -18,7 +19,17 @@ export default function Rotas() {
 
   useEffect(() => {
     carregarRotas()
+    carregarUtilizador()
   }, [])
+
+  async function carregarUtilizador() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: perfil } = await supabase
+        .from('perfis').select('*').eq('id', user.id).single()
+      setUtilizador(perfil)
+    }
+  }
 
   async function carregarRotas() {
     const { data } = await supabase.from('rotas').select('*').order('criado_em', { ascending: false })
@@ -75,31 +86,29 @@ export default function Rotas() {
     })
 
     carregarRotas()
-    setCarregando(false)
+
     try {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) {
-    const { data: perfil } = await supabase
-      .from('perfis').select('*').eq('id', user.id).single()
-    if (perfil?.email) {
-      await enviarNotificacao({
-        nome: perfil.nome,
-        emailDestino: perfil.email,
-        assunto: `Nova rota optimizada — ${municipioSeleccionado}`,
-        mensagem: `O JFS optimizou uma nova rota para o município de ${municipioSeleccionado}.\n\n${rotaIA}`,
-        municipio: municipioSeleccionado
-      })
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user?.email) {
+        await enviarNotificacao({
+          nome: utilizador?.nome || 'Gestor',
+          emailDestino: user.email,
+          assunto: `Nova rota optimizada — ${municipioSeleccionado}`,
+          mensagem: `O JFS optimizou uma nova rota para o município de ${municipioSeleccionado}.`,
+          municipio: municipioSeleccionado
+        })
+        console.log('Email enviado para:', user.email)
+      }
+    } catch (e) {
+      console.log('Erro ao enviar email:', e)
     }
-  }
-} catch (e) {
-  console.log('Erro ao enviar email:', e)
-}
+
+    setCarregando(false)
   }
 
   return (
     <main className="min-h-screen bg-green-950 text-white">
 
-      {/* NAVBAR */}
       <nav className="flex items-center justify-between px-8 py-4 bg-green-900 shadow-md">
         <div className="flex items-center gap-2">
           <span className="text-2xl">♻️</span>
@@ -113,16 +122,12 @@ export default function Rotas() {
       </nav>
 
       <div className="max-w-6xl mx-auto px-8 py-10">
-
         <h1 className="text-3xl font-bold text-green-300 mb-2">🚛 Optimização de Rotas</h1>
         <p className="text-green-400 mb-8">Selecciona um município e o JFS vai optimizar a rota de recolha</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
-          {/* PAINEL ESQUERDO */}
           <div className="flex flex-col gap-6">
-
-            {/* SELECCIONAR MUNICÍPIO */}
             <div className="bg-green-900 rounded-2xl p-6">
               <h2 className="text-lg font-bold text-green-300 mb-4">1. Selecciona o município</h2>
               <div className="grid grid-cols-2 gap-2">
@@ -142,7 +147,6 @@ export default function Rotas() {
               </div>
             </div>
 
-            {/* PONTOS DO MUNICÍPIO */}
             {pontos.length > 0 && (
               <div className="bg-green-900 rounded-2xl p-6">
                 <h2 className="text-lg font-bold text-green-300 mb-4">
@@ -176,10 +180,7 @@ export default function Rotas() {
             )}
           </div>
 
-          {/* PAINEL DIREITO */}
           <div className="flex flex-col gap-6">
-
-            {/* ROTA OPTIMIZADA */}
             {rotaIA && (
               <div className="bg-green-900 rounded-2xl p-6">
                 <h2 className="text-lg font-bold text-green-300 mb-4">🤖 Rota optimizada pelo JFS</h2>
@@ -189,7 +190,6 @@ export default function Rotas() {
               </div>
             )}
 
-            {/* HISTÓRICO DE ROTAS */}
             <div className="bg-green-900 rounded-2xl p-6">
               <h2 className="text-lg font-bold text-green-300 mb-4">📋 Histórico de rotas</h2>
               {rotas.length === 0 ? (
@@ -214,7 +214,6 @@ export default function Rotas() {
                 </div>
               )}
             </div>
-
           </div>
         </div>
       </div>

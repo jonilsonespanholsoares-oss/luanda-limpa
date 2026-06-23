@@ -1,9 +1,5 @@
 import emailjs from '@emailjs/browser'
 
-const SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!
-const TEMPLATE_ID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!
-const PUBLIC_KEY = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!
-
 export async function enviarNotificacao({
   nome,
   emailDestino,
@@ -17,11 +13,15 @@ export async function enviarNotificacao({
   mensagem: string
   municipio: string
 }) {
-  await emailjs.send(
+  const SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!
+  const TEMPLATE_ID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!
+  const PUBLIC_KEY = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!
+
+  const resultado = await emailjs.send(
     SERVICE_ID,
     TEMPLATE_ID,
     {
-      nome,
+      nome: nome || 'Utilizador',
       email: emailDestino,
       assunto,
       mensagem,
@@ -30,4 +30,7 @@ export async function enviarNotificacao({
     },
     PUBLIC_KEY
   )
+
+  console.log('Email enviado:', resultado)
+  return resultado
 }
