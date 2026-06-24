@@ -139,3 +139,5 @@ export default function Dashboard() {
       </div>
       <JFSFlutuante pagina="dashboard" nomeUtilizador={utilizador?.nome} papel={utilizador?.papel} />
     </main>
+  )
+}
