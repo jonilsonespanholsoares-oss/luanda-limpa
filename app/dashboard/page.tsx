@@ -50,6 +50,8 @@ export default function Dashboard() {
           <a href="/mapa" className="text-green-200 hover:text-white transition">🗺️ Mapa</a>
           <a href="/rotas" className="text-green-200 hover:text-white transition">🚛 Rotas</a>
           <a href="/dialogo" className="text-green-200 hover:text-white transition">💬 Diálogo</a>
+          <a href="/relatorios" className="text-green-200 hover:text-white transition">📊 Relatórios</a>
+           <a href="/alertas" className="text-green-200 hover:text-white transition">🔴 Alertas</a>
           <button onClick={sair} className="bg-red-700 hover:bg-red-600 text-white px-4 py-1 rounded-full text-sm transition">
             Sair
           </button>
@@ -124,6 +126,13 @@ export default function Dashboard() {
   <div>
     <h3 className="font-bold text-green-300">Relatórios</h3>
     <p className="text-green-400 text-sm">Análise e estatísticas do sistema</p>
+  </div>
+</a>
+<a href="/alertas" className="bg-red-950 hover:bg-red-900 rounded-2xl p-6 flex items-center gap-4 shadow transition border border-red-800">
+  <span className="text-4xl">🔴</span>
+  <div>
+    <h3 className="font-bold text-red-300">Alertas</h3>
+    <p className="text-red-400 text-sm">Contentores cheios e urgências</p>
   </div>
 </a>
 
