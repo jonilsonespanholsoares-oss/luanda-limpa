@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
         'Authorization': `Bearer ${chave}`
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'gemma2-9b-it',
         messages: [
           {
             role: 'system',
