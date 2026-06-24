@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
 
     const chave = process.env.GROQ_API_KEY
     if (!chave) {
-      return NextResponse.json({ resposta: 'Erro: chave GROQ_API_KEY não encontrada no servidor.' })
+      return NextResponse.json({ resposta: 'Erro: chave GROQ_API_KEY não encontrada.' })
     }
 
     const resposta = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -16,31 +16,27 @@ export async function POST(req: NextRequest) {
         'Authorization': `Bearer ${chave}`
       },
       body: JSON.stringify({
-        model: 'gemma2-9b-it',
+        model: 'llama-3.1-8b-instant',
         messages: [
           {
             role: 'system',
-            content: `És o JFS, o assistente de inteligência artificial do sistema Luanda Limpa. 
-            Respondes sempre em português. Ajudas com gestão de resíduos em Luanda.`
+            content: `És o JFS, assistente IA do Luanda Limpa. Respondes SEMPRE em português de Angola. 
+            És directo e conciso — máximo 3 parágrafos curtos. 
+            Ajudas com gestão de resíduos, rotas, contentores e coordenação de equipas em Luanda.`
           },
-          ...mensagens
+          ...mensagens.slice(-6)
         ],
-        max_tokens: 1024,
-        temperature: 0.7
+        max_tokens: 300,
+        temperature: 0.5,
+        stream: false
       })
     })
 
-    const texto = await resposta.text()
-
-    if (!resposta.ok) {
-      return NextResponse.json({ resposta: `Erro Groq: ${resposta.status} — ${texto}` })
-    }
-
-    const dados = JSON.parse(texto)
+    const dados = await resposta.json()
     const conteudo = dados.choices?.[0]?.message?.content || 'Sem resposta.'
     return NextResponse.json({ resposta: conteudo })
 
   } catch (erro: any) {
-    return NextResponse.json({ resposta: `Erro interno: ${erro.message}` })
+    return NextResponse.json({ resposta: `Erro: ${erro.message}` })
   }
 }
