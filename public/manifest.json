@@ -1,0 +1,41 @@
+{
+  "name": "Luanda Limpa",
+  "short_name": "LuandaLimpa",
+  "description": "Plataforma inteligente de gestão de resíduos de Luanda",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#052e16",
+  "theme_color": "#14532d",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mapa",
+      "url": "/mapa",
+      "description": "Ver mapa de Luanda"
+    },
+    {
+      "name": "Rotas",
+      "url": "/rotas",
+      "description": "Optimizar rotas"
+    },
+    {
+      "name": "Diálogo",
+      "url": "/dialogo",
+      "description": "Sala de diálogo"
+    }
+  ]
+}
