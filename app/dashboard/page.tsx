@@ -149,6 +149,13 @@ export default function Dashboard() {
     <p className="text-green-400 text-sm">Limpeza por município</p>
   </div>
 </a>
+<a href="/analytics" className="bg-green-900 hover:bg-green-800 rounded-2xl p-6 flex items-center gap-4 shadow transition">
+  <span className="text-4xl">📈</span>
+  <div>
+    <h3 className="font-bold text-green-300">Analytics</h3>
+    <p className="text-green-400 text-sm">Previsões e métricas em tempo real</p>
+  </div>
+</a>
 
       </div>
       <JFSFlutuante pagina="dashboard" nomeUtilizador={utilizador?.nome} papel={utilizador?.papel} />

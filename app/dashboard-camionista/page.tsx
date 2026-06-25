@@ -1,4 +1,5 @@
 'use client'
+import { supabase } from '../../lib/supabase'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import dynamic from 'next/dynamic'
@@ -21,15 +22,38 @@ export default function DashboardCamionista() {
   useEffect(() => { carregarDados() }, [])
 
   useEffect(() => {
-    if (navigator.geolocation) {
-      const watchId = navigator.geolocation.watchPosition(
-        pos => setPosicaoActual([pos.coords.latitude, pos.coords.longitude]),
-        err => console.log('GPS:', err),
-        { enableHighAccuracy: true, timeout: 10000 }
-      )
-      return () => navigator.geolocation.clearWatch(watchId)
-    }
-  }, [])
+  if (navigator.geolocation) {
+    const watchId = navigator.geolocation.watchPosition(
+      async pos => {
+        const lat = pos.coords.latitude
+        const lon = pos.coords.longitude
+        setPosicaoActual([lat, lon])
+
+        if (utilizador?.id) {
+          const { data: existente } = await supabase
+            .from('localizacoes_tempo_real')
+            .select('id').eq('utilizador_id', utilizador.id).single()
+
+          if (existente) {
+            await supabase.from('localizacoes_tempo_real').update({
+              latitude: lat, longitude: lon,
+              actualizado_em: new Date().toISOString(), activo: true
+            }).eq('utilizador_id', utilizador.id)
+          } else {
+            await supabase.from('localizacoes_tempo_real').insert({
+              utilizador_id: utilizador.id,
+              latitude: lat, longitude: lon,
+              municipio: utilizador.municipio, activo: true
+            })
+          }
+        }
+      },
+      err => console.log('GPS:', err),
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
+    return () => navigator.geolocation.clearWatch(watchId)
+  }
+}, [utilizador])
 
   async function carregarDados() {
     const { data: { user } } = await supabase.auth.getUser()

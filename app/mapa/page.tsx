@@ -12,6 +12,26 @@ export default function Mapa() {
   const [rotaCoordenadas, setRotaCoordenadas] = useState<[number, number][]>([])
   const [carregandoRota, setCarregandoRota] = useState(false)
   const [infoRota, setInfoRota] = useState<any>(null)
+const [camionistas, setCamionistas] = useState<any[]>([])
+
+useEffect(() => {
+  carregarCamionistas()
+  const interval = setInterval(carregarCamionistas, 30000)
+  return () => clearInterval(interval)
+}, [])
+
+async function carregarCamionistas() {
+  const { data } = await supabase
+    .from('localizacoes_tempo_real')
+    .select('*, perfis(nome, municipio)')
+    .eq('activo', true)
+  setCamionistas((data || []).map(c => ({
+    nome: c.perfis?.nome || 'Camionista',
+    latitude: c.latitude,
+    longitude: c.longitude,
+    municipio: c.perfis?.municipio || ''
+  })))
+}  
 
   const municipios = [
     'Belas', 'Cacuaco', 'Cazenga', 'Icolo e Bengo',
@@ -26,6 +46,8 @@ export default function Mapa() {
     }
     carregarPontos()
   }, [])
+
+  
 
   async function calcularRota(municipio: string) {
     setMunicipioFiltro(municipio)
