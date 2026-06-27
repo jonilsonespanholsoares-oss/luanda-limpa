@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, Circle } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -32,7 +32,6 @@ interface Ponto {
   capacidade: string
 }
 
-
 interface CamionistaPosicao {
   nome: string
   latitude: number
@@ -48,20 +47,6 @@ interface Props {
   posicaoActual?: [number, number] | null
   mostrarRaioGPS?: boolean
 }
-
-<MapaComponent
-  pontos={pontos}
-  rotaCoordenadas={rotaCoordenadas}
-  municipioFiltro={utilizador?.municipio}
-  posicaoActual={posicaoActual}
-  mostrarRaioGPS={true}
-/>
-<MapaComponent
-  pontos={pontos}
-  rotaCoordenadas={rotaCoordenadas}
-  municipioFiltro={municipioFiltro}
-  camionistas={camionistas}
-/>
 
 function AjustarVista({ pontos }: { pontos: Ponto[] }) {
   const mapa = useMap()

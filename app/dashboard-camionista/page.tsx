@@ -1,5 +1,4 @@
 'use client'
-import { supabase } from '../../lib/supabase'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import dynamic from 'next/dynamic'
@@ -13,7 +12,6 @@ export default function DashboardCamionista() {
   const [pontos, setPontos] = useState<any[]>([])
   const [rotaCoordenadas, setRotaCoordenadas] = useState<[number, number][]>([])
   const [infoRota, setInfoRota] = useState<any>(null)
-  const [confirmando, setConfirmando] = useState<string | null>(null)
   const [confirmados, setConfirmados] = useState<string[]>([])
   const [posicaoActual, setPosicaoActual] = useState<[number, number] | null>(null)
   const [verificando, setVerificando] = useState<string | null>(null)
@@ -22,18 +20,16 @@ export default function DashboardCamionista() {
   useEffect(() => { carregarDados() }, [])
 
   useEffect(() => {
-  if (navigator.geolocation) {
+    if (!navigator.geolocation) return
     const watchId = navigator.geolocation.watchPosition(
       async pos => {
         const lat = pos.coords.latitude
         const lon = pos.coords.longitude
         setPosicaoActual([lat, lon])
-
         if (utilizador?.id) {
           const { data: existente } = await supabase
             .from('localizacoes_tempo_real')
             .select('id').eq('utilizador_id', utilizador.id).single()
-
           if (existente) {
             await supabase.from('localizacoes_tempo_real').update({
               latitude: lat, longitude: lon,
@@ -52,8 +48,7 @@ export default function DashboardCamionista() {
       { enableHighAccuracy: true, timeout: 10000 }
     )
     return () => navigator.geolocation.clearWatch(watchId)
-  }
-}, [utilizador])
+  }, [utilizador])
 
   async function carregarDados() {
     const { data: { user } } = await supabase.auth.getUser()
@@ -72,11 +67,9 @@ export default function DashboardCamionista() {
     setInfoRota(null)
     setConfirmados([])
     setVerificacoes({})
-
     const { data: pontosData } = await supabase.from('pontos_recolha')
       .select('*').eq('municipio', rota.municipio)
     setPontos(pontosData || [])
-
     if (pontosData && pontosData.length >= 2) {
       const coords = pontosData.map((p: any) => `${p.longitude},${p.latitude}`).join(';')
       const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`
@@ -100,15 +93,14 @@ export default function DashboardCamionista() {
     const R = 6371000
     const dLat = (lat2 - lat1) * Math.PI / 180
     const dLon = (lon2 - lon1) * Math.PI / 180
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon/2) * Math.sin(dLon/2)
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+      Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   }
 
   async function verificarLocalizacao(ponto: any) {
     setVerificando(ponto.id)
-
     if (!posicaoActual) {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -127,15 +119,12 @@ export default function DashboardCamionista() {
       }
       return
     }
-
     await processarVerificacao(ponto, posicaoActual[0], posicaoActual[1])
   }
 
   async function processarVerificacao(ponto: any, lat: number, lon: number) {
     const distancia = calcularDistancia(lat, lon, ponto.latitude, ponto.longitude)
-    const raio = 500
-
-    if (distancia <= raio) {
+    if (distancia <= 500) {
       await confirmarRecolha(ponto.id, ponto.nome, lat, lon, distancia)
       setVerificacoes(prev => ({
         ...prev,
@@ -153,7 +142,6 @@ export default function DashboardCamionista() {
   async function confirmarRecolha(pontoId: string, pontoNome: string, lat: number, lon: number, distancia: number) {
     await supabase.from('pontos_recolha')
       .update({ estado: 'activo', capacidade: 'normal' }).eq('id', pontoId)
-
     await supabase.from('mensagens').insert({
       utilizador_id: utilizador.id,
       conteudo: `✅ Recolha confirmada por GPS: "${pontoNome}" em ${utilizador.municipio}\n📍 Posição: ${lat.toFixed(4)}, ${lon.toFixed(4)}\n📏 Distância ao ponto: ${Math.round(distancia)}m\n🕐 ${new Date().toLocaleTimeString('pt-PT')}`,
@@ -161,7 +149,6 @@ export default function DashboardCamionista() {
       sala: 'publica',
       eliminada: false
     })
-
     setConfirmados(prev => [...prev, pontoId])
   }
 
@@ -181,9 +168,7 @@ export default function DashboardCamionista() {
         </div>
         <div className="flex items-center gap-4">
           {posicaoActual && (
-            <span className="text-green-400 text-xs flex items-center gap-1">
-              📍 GPS activo
-            </span>
+            <span className="text-green-400 text-xs">📍 GPS activo</span>
           )}
           <a href="/dialogo" className="text-gray-200 hover:text-white">💬 Diálogo</a>
           <button onClick={sair} className="bg-red-700 hover:bg-red-600 text-white px-4 py-1 rounded-full text-sm">Sair</button>
@@ -200,7 +185,7 @@ export default function DashboardCamionista() {
             <div className="bg-gray-900 rounded-2xl px-6 py-3 text-center">
               <p className="text-gray-400 text-xs mb-1">Progresso da rota</p>
               <div className="w-32 bg-gray-700 rounded-full h-3 mb-1">
-                <div className="bg-green-500 h-3 rounded-full transition-all" style={{width: `${progresso}%`}}/>
+                <div className="bg-green-500 h-3 rounded-full transition-all" style={{ width: `${progresso}%` }}/>
               </div>
               <p className="text-green-300 font-bold text-sm">{pontosRecolhidos}/{totalPontos} · {progresso}%</p>
             </div>
@@ -208,11 +193,8 @@ export default function DashboardCamionista() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          {/* PAINEL ESQUERDO */}
           <div className="flex flex-col gap-4">
 
-            {/* ROTAS */}
             <div className="bg-gray-900 rounded-2xl p-4">
               <h2 className="text-sm font-bold text-gray-300 mb-3">🗓️ Rotas disponíveis</h2>
               {rotas.length === 0 ? (
@@ -222,9 +204,7 @@ export default function DashboardCamionista() {
                   {rotas.slice(0, 5).map(r => (
                     <button key={r.id} onClick={() => activarRota(r)}
                       className={`w-full text-left px-3 py-2 rounded-xl text-sm transition ${
-                        rotaActiva?.id === r.id
-                          ? 'bg-green-600 text-white'
-                          : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                        rotaActiva?.id === r.id ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                       }`}>
                       <p className="font-medium">{r.nome}</p>
                       <p className="text-xs opacity-70">{new Date(r.criado_em).toLocaleDateString('pt-PT')}</p>
@@ -234,7 +214,6 @@ export default function DashboardCamionista() {
               )}
             </div>
 
-            {/* INFO ROTA */}
             {infoRota && (
               <div className="bg-gray-900 rounded-2xl p-4">
                 <h2 className="text-sm font-bold text-gray-300 mb-3">📊 Info da rota</h2>
@@ -253,7 +232,6 @@ export default function DashboardCamionista() {
               </div>
             )}
 
-            {/* CONFIRMAÇÃO GPS */}
             {pontos.length > 0 && (
               <div className="bg-gray-900 rounded-2xl p-4">
                 <h2 className="text-sm font-bold text-gray-300 mb-1">📍 Confirmar recolhas</h2>
@@ -271,7 +249,6 @@ export default function DashboardCamionista() {
                           {p.estado === 'cheio' ? '🔴' : '🟢'}
                         </span>
                       </div>
-
                       {verificacoes[p.id] && (
                         <p className={`text-xs mb-1 ${
                           verificacoes[p.id].estado === 'confirmado' ? 'text-green-400' :
@@ -280,15 +257,12 @@ export default function DashboardCamionista() {
                           {verificacoes[p.id].msg}
                         </p>
                       )}
-
                       <button
                         onClick={() => verificarLocalizacao(p)}
                         disabled={verificando === p.id || confirmados.includes(p.id)}
                         className={`w-full py-1.5 rounded-lg text-xs font-medium transition ${
-                          confirmados.includes(p.id)
-                            ? 'bg-green-700 text-green-300 cursor-default'
-                            : verificacoes[p.id]?.estado === 'longe'
-                            ? 'bg-yellow-700 hover:bg-yellow-600 text-white'
+                          confirmados.includes(p.id) ? 'bg-green-700 text-green-300 cursor-default'
+                            : verificacoes[p.id]?.estado === 'longe' ? 'bg-yellow-700 hover:bg-yellow-600 text-white'
                             : 'bg-green-600 hover:bg-green-500 text-white'
                         } disabled:opacity-50`}
                       >
@@ -304,14 +278,15 @@ export default function DashboardCamionista() {
             )}
           </div>
 
-          {/* MAPA */}
           <div className="lg:col-span-2">
-            <div className="rounded-2xl overflow-hidden border border-gray-800" style={{height: '600px'}}>
+            <div className="rounded-2xl overflow-hidden border border-gray-800" style={{ height: '600px' }}>
               {rotaActiva ? (
                 <MapaComponent
                   pontos={pontos}
                   rotaCoordenadas={rotaCoordenadas}
                   municipioFiltro={utilizador?.municipio}
+                  posicaoActual={posicaoActual}
+                  mostrarRaioGPS={true}
                 />
               ) : (
                 <div className="h-full bg-gray-900 flex items-center justify-center flex-col gap-4">
