@@ -181,7 +181,7 @@ export default function Analytics() {
                 <Tooltip
                   contentStyle={{ background: '#14532d', border: '1px solid #166534', borderRadius: '8px' }}
                   labelStyle={{ color: '#86efac' }}
-                  formatter={(value: any, name: string) => [value, name === 'cheios' ? '🔴 Cheios' : '🟢 Normais']}
+                  formatter={(value: any, name: any) => [value, name === 'cheios' ? '🔴 Cheios' : '🟢 Normais']}
                   labelFormatter={(label) => dados?.dadosMunicipio?.find((d: any) => d.nome === label)?.nomeCompleto || label}
                 />
                 <Legend formatter={(value) => value === 'cheios' ? '🔴 Cheios' : '🟢 Normais'} />
