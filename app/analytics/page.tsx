@@ -2,7 +2,13 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import dynamic from 'next/dynamic'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, LineChart, Line, Legend
+} from 'recharts'
 const JFSFlutuante = dynamic(() => import('../../components/JFSFlutuante'), { ssr: false })
+
+const CORES = ['#22c55e', '#ef4444', '#3b82f6', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#14b8a6', '#6366f1', '#a78bfa']
 
 export default function Analytics() {
   const [utilizador, setUtilizador] = useState<any>(null)
@@ -28,15 +34,19 @@ export default function Analytics() {
     const { count: totalAvaliacoes } = await supabase.from('avaliacoes').select('*', { count: 'exact', head: true })
     const { data: avaliacoes } = await supabase.from('avaliacoes').select('nota, municipio')
     const { data: pontosPorMunicipio } = await supabase.from('pontos_recolha').select('municipio, estado')
-    const { data: recolhas } = await supabase.from('calendario_recolhas').select('estado, municipio')
-    const { data: previsoesSalvas } = await supabase.from('previsoes_contentores').select('*').order('criado_em', { ascending: false }).limit(10)
+    const { data: previsoesSalvas } = await supabase.from('previsoes_contentores').select('*').order('criado_em', { ascending: false }).limit(5)
+    const { data: perfis } = await supabase.from('perfis').select('papel')
 
-    const municipioStats: Record<string, { total: number; cheios: number }> = {}
+    const municipioStats: Record<string, { total: number; cheios: number; normais: number }> = {}
     pontosPorMunicipio?.forEach(p => {
-      if (!municipioStats[p.municipio]) municipioStats[p.municipio] = { total: 0, cheios: 0 }
+      if (!municipioStats[p.municipio]) municipioStats[p.municipio] = { total: 0, cheios: 0, normais: 0 }
       municipioStats[p.municipio].total++
       if (p.estado === 'cheio') municipioStats[p.municipio].cheios++
+      else municipioStats[p.municipio].normais++
     })
+
+    const papelStats: Record<string, number> = {}
+    perfis?.forEach(p => { papelStats[p.papel] = (papelStats[p.papel] || 0) + 1 })
 
     const mediaAvaliacoes = avaliacoes?.length
       ? (avaliacoes.reduce((s, a) => s + a.nota, 0) / avaliacoes.length).toFixed(1)
@@ -45,11 +55,25 @@ export default function Analytics() {
     const eficiencia = totalRotas ? Math.round(((rotasConcluidas || 0) / totalRotas) * 100) : 0
     const taxaOcupacao = totalPontos ? Math.round(((pontosCheios || 0) / totalPontos) * 100) : 0
 
+    const dadosMunicipio = Object.entries(municipioStats).map(([nome, s]) => ({
+      nome: nome.length > 8 ? nome.substring(0, 8) + '...' : nome,
+      nomeCompleto: nome,
+      cheios: s.cheios,
+      normais: s.normais,
+      total: s.total,
+      pct: Math.round(s.cheios / s.total * 100)
+    })).sort((a, b) => b.pct - a.pct)
+
+    const dadosPapel = Object.entries(papelStats).map(([papel, count]) => ({
+      name: papel === 'admin' ? 'Admin' : papel === 'gestor' ? 'Gestor' : papel === 'operador' ? 'Operador' : 'Camionista',
+      value: count
+    }))
+
     setDados({
       totalPontos, pontosCheios, totalRotas, rotasConcluidas,
       totalUtilizadores, totalMensagens, totalAvaliacoes,
       mediaAvaliacoes, eficiencia, taxaOcupacao,
-      municipioStats, recolhas
+      dadosMunicipio, dadosPapel
     })
     setPrevisoes(previsoesSalvas || [])
     setCarregando(false)
@@ -57,10 +81,7 @@ export default function Analytics() {
 
   async function gerarPrevisaoIA() {
     setGerandoPrevisao(true)
-    const { data: pontosCheios } = await supabase.from('pontos_recolha')
-      .select('*').eq('estado', 'cheio')
     const { data: todospontos } = await supabase.from('pontos_recolha').select('municipio, estado')
-
     const municipioStats: Record<string, { total: number; cheios: number }> = {}
     todospontos?.forEach(p => {
       if (!municipioStats[p.municipio]) municipioStats[p.municipio] = { total: 0, cheios: 0 }
@@ -75,22 +96,19 @@ export default function Analytics() {
         mensagens: [{
           role: 'user',
           content: `Analisa os dados do sistema Luanda Limpa e faz previsões:
+          ${Object.entries(municipioStats).map(([m, s]) => `${m}: ${s.cheios}/${s.total} cheios (${Math.round(s.cheios / s.total * 100)}%)`).join('\n')}
           
-          Distribuição de contentores por município:
-          ${Object.entries(municipioStats).map(([m, s]) => `${m}: ${s.cheios}/${s.total} cheios (${Math.round(s.cheios/s.total*100)}%)`).join('\n')}
-          
-          Com base nestes dados:
-          1. Quais municípios vão precisar de recolha urgente nos próximos 3 dias?
-          2. Qual é a tendência geral do sistema?
+          1. Quais municípios precisam de recolha urgente nos próximos 3 dias?
+          2. Qual é a tendência geral?
           3. Que acções preventivas recomendas?
-          
           Sê conciso e profissional.`
         }]
       })
     })
     const resposta = await res.json()
 
-    for (const ponto of (pontosCheios || []).slice(0, 5)) {
+    const { data: pontosCheiosData } = await supabase.from('pontos_recolha').select('id').eq('estado', 'cheio').limit(3)
+    for (const ponto of (pontosCheiosData || [])) {
       await supabase.from('previsoes_contentores').insert({
         ponto_id: ponto.id,
         previsao_texto: resposta.resposta,
@@ -103,24 +121,11 @@ export default function Analytics() {
     setGerandoPrevisao(false)
   }
 
-  function barraProgresso(valor: number, max: number, cor: string) {
-    const pct = max > 0 ? Math.min((valor / max) * 100, 100) : 0
-    return (
-      <div className="w-full bg-green-800 rounded-full h-2 mt-1">
-        <div className={`${cor} h-2 rounded-full transition-all`} style={{ width: `${pct}%` }}/>
-      </div>
-    )
-  }
-
   if (carregando) return (
     <main className="min-h-screen bg-green-950 flex items-center justify-center">
       <p className="text-green-400">A carregar analytics...</p>
     </main>
   )
-
-  const municipioArray = Object.entries(dados?.municipioStats || {})
-    .map(([nome, stats]: any) => ({ nome, ...stats, pct: Math.round(stats.cheios / stats.total * 100) }))
-    .sort((a, b) => b.pct - a.pct)
 
   return (
     <main className="min-h-screen bg-green-950 text-white">
@@ -147,10 +152,10 @@ export default function Analytics() {
           </button>
         </div>
 
-        {/* KPIs PRINCIPAIS */}
+        {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Taxa de ocupação', valor: `${dados?.taxaOcupacao}%`, sub: `${dados?.pontosCheios} cheios`, cor: dados?.taxaOcupacao > 50 ? 'text-red-300' : 'text-green-300', bg: dados?.taxaOcupacao > 50 ? 'bg-red-950 border border-red-800' : 'bg-green-900' },
+            { label: 'Taxa de ocupação', valor: `${dados?.taxaOcupacao}%`, sub: `${dados?.pontosCheios} cheios de ${dados?.totalPontos}`, cor: dados?.taxaOcupacao > 50 ? 'text-red-300' : 'text-green-300', bg: dados?.taxaOcupacao > 50 ? 'bg-red-950 border border-red-800' : 'bg-green-900' },
             { label: 'Eficiência rotas', valor: `${dados?.eficiencia}%`, sub: `${dados?.rotasConcluidas}/${dados?.totalRotas} concluídas`, cor: 'text-blue-300', bg: 'bg-green-900' },
             { label: 'Avaliação média', valor: `${dados?.mediaAvaliacoes}⭐`, sub: `${dados?.totalAvaliacoes} avaliações`, cor: 'text-yellow-300', bg: 'bg-green-900' },
             { label: 'Utilizadores', valor: dados?.totalUtilizadores, sub: 'Registados no sistema', cor: 'text-purple-300', bg: 'bg-green-900' },
@@ -165,51 +170,75 @@ export default function Analytics() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
-          {/* OCUPAÇÃO POR MUNICÍPIO */}
+          {/* GRÁFICO DE BARRAS — OCUPAÇÃO POR MUNICÍPIO */}
           <div className="bg-green-900 rounded-2xl p-6">
             <h2 className="text-lg font-bold text-green-300 mb-4">🏙️ Ocupação por município</h2>
-            <div className="flex flex-col gap-3">
-              {municipioArray.map(m => (
-                <div key={m.nome}>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-green-300 text-sm">{m.nome}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-green-500 text-xs">{m.cheios}/{m.total}</span>
-                      <span className={`text-xs font-bold ${m.pct > 50 ? 'text-red-300' : m.pct > 30 ? 'text-yellow-300' : 'text-green-300'}`}>
-                        {m.pct}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="w-full bg-green-800 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full transition-all ${m.pct > 50 ? 'bg-red-500' : m.pct > 30 ? 'bg-yellow-500' : 'bg-green-500'}`}
-                      style={{ width: `${m.pct}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={dados?.dadosMunicipio} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#166534" />
+                <XAxis dataKey="nome" tick={{ fill: '#86efac', fontSize: 10 }} />
+                <YAxis tick={{ fill: '#86efac', fontSize: 10 }} />
+                <Tooltip
+                  contentStyle={{ background: '#14532d', border: '1px solid #166534', borderRadius: '8px' }}
+                  labelStyle={{ color: '#86efac' }}
+                  formatter={(value: any, name: string) => [value, name === 'cheios' ? '🔴 Cheios' : '🟢 Normais']}
+                  labelFormatter={(label) => dados?.dadosMunicipio?.find((d: any) => d.nome === label)?.nomeCompleto || label}
+                />
+                <Legend formatter={(value) => value === 'cheios' ? '🔴 Cheios' : '🟢 Normais'} />
+                <Bar dataKey="normais" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="cheios" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
 
-          {/* MÉTRICAS GERAIS */}
+          {/* GRÁFICO DE PIE — UTILIZADORES POR PAPEL */}
           <div className="bg-green-900 rounded-2xl p-6">
-            <h2 className="text-lg font-bold text-green-300 mb-4">📊 Métricas gerais</h2>
-            <div className="flex flex-col gap-4">
-              {[
-                { label: 'Pontos de recolha', valor: dados?.totalPontos, max: 200, cor: 'bg-green-500' },
-                { label: 'Rotas geradas', valor: dados?.totalRotas, max: 50, cor: 'bg-blue-500' },
-                { label: 'Mensagens no sistema', valor: dados?.totalMensagens, max: 100, cor: 'bg-purple-500' },
-                { label: 'Avaliações recebidas', valor: dados?.totalAvaliacoes, max: 50, cor: 'bg-yellow-500' },
-              ].map((m, i) => (
-                <div key={i}>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-green-400 text-sm">{m.label}</span>
-                    <span className="text-green-300 font-bold text-sm">{m.valor}</span>
-                  </div>
-                  {barraProgresso(m.valor, m.max, m.cor)}
+            <h2 className="text-lg font-bold text-green-300 mb-4">👥 Utilizadores por função</h2>
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={dados?.dadosPapel}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  dataKey="value"
+                  label={({ name, value }) => `${name}: ${value}`}
+                  labelLine={{ stroke: '#86efac' }}
+                >
+                  {dados?.dadosPapel?.map((_: any, index: number) => (
+                    <Cell key={index} fill={CORES[index % CORES.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ background: '#14532d', border: '1px solid #166534', borderRadius: '8px' }}
+                  labelStyle={{ color: '#86efac' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* GRÁFICO DE LINHA — TENDÊNCIA */}
+        <div className="bg-green-900 rounded-2xl p-6 mb-6">
+          <h2 className="text-lg font-bold text-green-300 mb-4">📊 Métricas gerais do sistema</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Pontos de recolha', valor: dados?.totalPontos, max: 200, cor: '#22c55e' },
+              { label: 'Rotas geradas', valor: dados?.totalRotas, max: 50, cor: '#3b82f6' },
+              { label: 'Mensagens', valor: dados?.totalMensagens, max: 100, cor: '#8b5cf6' },
+              { label: 'Avaliações', valor: dados?.totalAvaliacoes, max: 50, cor: '#f59e0b' },
+            ].map((m, i) => (
+              <div key={i} className="bg-green-800 rounded-xl p-4">
+                <p className="text-green-400 text-xs mb-2">{m.label}</p>
+                <p className="text-2xl font-bold text-white mb-2">{m.valor}</p>
+                <div className="w-full bg-green-700 rounded-full h-2">
+                  <div className="h-2 rounded-full transition-all" style={{
+                    width: `${Math.min((m.valor / m.max) * 100, 100)}%`,
+                    backgroundColor: m.cor
+                  }}/>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         </div>
 
